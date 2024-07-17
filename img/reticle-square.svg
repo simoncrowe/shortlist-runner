@@ -70,7 +70,7 @@
      id="layer1">
     <path
        sodipodi:type="star"
-       style="fill:#f0f0f0;fill-opacity:1;stroke:none;stroke-width:26.458333;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#f8f0f0;fill-opacity:0.9007358;stroke:none;stroke-width:26.458333;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        id="path2"
        inkscape:flatsided="true"
        sodipodi:sides="7"
@@ -498,7 +498,7 @@
     </g>
     <path
        sodipodi:type="star"
-       style="fill:none;fill-opacity:1;stroke:#000548;stroke-width:26.458333;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:none;fill-opacity:1;stroke:#00085b;stroke-width:26.458333;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1"
        id="path75"
        inkscape:flatsided="true"
        sodipodi:sides="7"
