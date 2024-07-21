@@ -73,8 +73,9 @@ func CreateJob(ctx context.Context, profile profiles.Profile) (string, error) {
 		Command: []string{"/opt/reticle/relay"},
 	}
 	pod := corev1.PodSpec{
-		Containers: []corev1.Container{assessor, relay},
-		Volumes:    []corev1.Volume{cfgVol},
+		Containers:         []corev1.Container{assessor, relay},
+		Volumes:            []corev1.Volume{cfgVol},
+		ServiceAccountName: "runner",
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
 	jobSpec := batchv1.JobSpec{
