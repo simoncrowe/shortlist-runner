@@ -1,4 +1,4 @@
-module github.com/simoncrowe/reticle-runner
+module github.com/simoncrowe/shortlist-runner
 
 go 1.22.5
 
