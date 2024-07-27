@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/simoncrowe/reticle-runner/internal/profiles"
+	schemav1 "github.com/simoncrowe/reticle-schema/lib/v1"
 )
 
 func createClientset() (*kubernetes.Clientset, error) {
@@ -28,7 +28,7 @@ func createClientset() (*kubernetes.Clientset, error) {
 	return cs, nil
 }
 
-func CreateJob(ctx context.Context, profile profiles.Profile) (string, error) {
+func CreateJob(ctx context.Context, profile schemav1.Profile) (string, error) {
 	cs, err := createClientset()
 	if err != nil {
 		return "", err
@@ -47,35 +47,52 @@ func CreateJob(ctx context.Context, profile profiles.Profile) (string, error) {
 		return "", err
 	}
 
-	cfgVol := corev1.Volume{
-		Name: "assessor-config",
+	resultVol := corev1.Volume{
+		Name: "assessor-result",
 		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: cm.ObjectMeta.Name,
-				},
-			},
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
-	cfgVolMnt := corev1.VolumeMount{
-		Name:      "assessor-config",
-		MountPath: "/etc/reticle/assessor",
+	resultVolMnt := corev1.VolumeMount{
+		Name:      "assessor-result",
+		MountPath: "/etc/reticle/assessor-result",
+	}
+
+	assessorCfg := corev1.EnvFromSource{
+		ConfigMapRef: &corev1.ConfigMapEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: cm.ObjectMeta.Name,
+			},
+		},
 	}
 	assessor := corev1.Container{
 		Name:         "assessor",
 		Image:        os.Getenv("ASSESSOR_IMAGE"),
 		Command:      []string{"/opt/reticle/assessor"},
-		VolumeMounts: []corev1.VolumeMount{cfgVolMnt},
+		EnvFrom:      []corev1.EnvFromSource{assessorCfg},
+		VolumeMounts: []corev1.VolumeMount{resultVolMnt},
+	}
+
+	relayCfg := corev1.EnvFromSource{
+		ConfigMapRef: &corev1.ConfigMapEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: os.Getenv("RELAY_CONFIGMAP_NAME"),
+			},
+		},
 	}
 	relay := corev1.Container{
-		Name:    "relay",
-		Image:   os.Getenv("RELAY_IMAGE"),
-		Command: []string{"/opt/reticle/relay"},
+		Name:         "relay",
+		Image:        os.Getenv("RELAY_IMAGE"),
+		Command:      []string{"/opt/reticle/relay"},
+		EnvFrom:      []corev1.EnvFromSource{relayCfg},
+		VolumeMounts: []corev1.VolumeMount{resultVolMnt},
 	}
+
 	pod := corev1.PodSpec{
 		Containers:         []corev1.Container{assessor, relay},
-		Volumes:            []corev1.Volume{cfgVol},
+		Volumes:            []corev1.Volume{resultVol},
 		ServiceAccountName: "runner",
+		RestartPolicy:      "Never",
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
 	jobSpec := batchv1.JobSpec{

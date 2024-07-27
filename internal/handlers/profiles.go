@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/simoncrowe/reticle-runner/internal/jobs"
-	"github.com/simoncrowe/reticle-runner/internal/profiles"
+	schemav1 "github.com/simoncrowe/reticle-schema/lib/v1"
 )
 
 type profileResp struct {
@@ -18,14 +18,14 @@ type profileResp struct {
 func HandleProfiles(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
-	profile, err := profiles.DecodeProfile(r.Body)
+	profile, err := schemav1.DecodeProfile(r.Body)
 	if err != nil {
 		msg := strings.Join([]string{"Deserialization error", err.Error()}, ": ")
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
-	errMsgs := profiles.ValidateProfile(profile)
+	errMsgs := schemav1.ValidateProfile(profile)
 	if len(errMsgs) > 0 {
 		http.Error(w, strings.Join(errMsgs, ", "), http.StatusBadRequest)
 		return
