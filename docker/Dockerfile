@@ -1,11 +1,11 @@
-FROM golang:1.22
-
+# syntax=docker/dockerfile:1
+FROM golang:1.22 AS builder
 WORKDIR /src
-
 COPY go.mod go.sum  ./
 COPY internal ./internal
 COPY cmd ./cmd
+RUN go build  -o /opt/shortlist/runner ./cmd/runner/
 
-RUN go build  -o /opt/reticle/runner ./cmd/runner/
-
-CMD ["/opt/reticle/runner"]
+FROM debian:stable-slim
+COPY --from=builder /opt/shortlist/runner /opt/shortlist/runner
+CMD ["/opt/shortlist/runner"]

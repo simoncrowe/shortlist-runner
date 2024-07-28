@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/simoncrowe/reticle-runner/internal/handlers"
+	"github.com/simoncrowe/shortlist-runner/internal/handlers"
 )
 
 func main() {
