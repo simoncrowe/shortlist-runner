@@ -66,51 +66,26 @@ func CreateJob(ctx context.Context, profile schemav1.Profile) (string, error) {
 		MountPath: "/etc/shortlist/profile",
 	}
 
-	resultVol := corev1.Volume{
-		Name: "assessor-result",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
-	resultVolMnt := corev1.VolumeMount{
-		Name:      "assessor-result",
-		MountPath: "/etc/shortlist/assessor-result",
-	}
-
 	assessorCfg := []corev1.EnvVar{
 		corev1.EnvVar{
 			Name:  "PROFILE_PATH",
 			Value: "/etc/shortlist/profile/data.json",
 		},
 		corev1.EnvVar{
-			Name:  "RESULT_PATH",
-			Value: "/etc/shortlist/assessor-result/data.json",
+			Name:  "NOTIFIER_URL",
+			Value: os.Getenv("NOTIFIER_URL"),
 		},
 	}
 	assessor := corev1.Container{
 		Name:         "assessor",
 		Image:        os.Getenv("ASSESSOR_IMAGE"),
 		Env:          assessorCfg,
-		VolumeMounts: []corev1.VolumeMount{profileVolMnt, resultVolMnt},
-	}
-
-	relayCfg := corev1.EnvFromSource{
-		ConfigMapRef: &corev1.ConfigMapEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: os.Getenv("RELAY_CONFIGMAP_NAME"),
-			},
-		},
-	}
-	relay := corev1.Container{
-		Name:         "relay",
-		Image:        os.Getenv("RELAY_IMAGE"),
-		EnvFrom:      []corev1.EnvFromSource{relayCfg},
-		VolumeMounts: []corev1.VolumeMount{resultVolMnt},
+		VolumeMounts: []corev1.VolumeMount{profileVolMnt},
 	}
 
 	pod := corev1.PodSpec{
-		Containers:         []corev1.Container{assessor, relay},
-		Volumes:            []corev1.Volume{profileVol, resultVol},
+		Containers:         []corev1.Container{assessor},
+		Volumes:            []corev1.Volume{profileVol},
 		ServiceAccountName: "runner",
 		RestartPolicy:      "Never",
 	}
