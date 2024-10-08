@@ -1,0 +1,8 @@
+name: Run automated tests
+run-name: ${{ github.actor }} running tests
+on: [push]
+jobs:
+  unit-tests:
+    runs-on: golang:1.22-alpine
+    steps:
+      - run: go test ./...

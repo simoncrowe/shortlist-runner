@@ -1,0 +1,7 @@
+name: Build artifacts
+run-name: ${{ github.actor }} is building artifacts
+on:
+  push:
+    branches:
+      - master
+  runs-on:
