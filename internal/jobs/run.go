@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 	batchv1 "k8s.io/api/batch/v1"
@@ -35,7 +36,7 @@ func CreateJob(ctx context.Context, profile schemav1.Profile) (string, error) {
 	}
 
 	id := uuid.New()
-	jobName := id.String()
+	jobName := strings.Join([]string{"assessor", id.String()}, "-")
 
 	profileData, err := schemav1.EncodeProfileJSON(profile)
 	if err != nil {
@@ -99,6 +100,19 @@ func CreateJob(ctx context.Context, profile schemav1.Profile) (string, error) {
 	}
 	jobOpts := metav1.CreateOptions{}
 	job, err := cs.BatchV1().Jobs("shortlist").Create(ctx, &jobCfg, jobOpts)
+	if err != nil {
+		return "", err
+	}
+
+	cmOwnerRef := metav1.OwnerReference{
+		APIVersion: "batch/v1",
+		Kind:       "Job",
+		Name:       jobName,
+		UID:        job.UID,
+	}
+	cmUpdateOps := metav1.UpdateOptions{}
+	cm.ObjectMeta.OwnerReferences = []metav1.OwnerReference{cmOwnerRef}
+	_, err = cs.CoreV1().ConfigMaps("shortlist").Update(ctx, cm, cmUpdateOps)
 	if err != nil {
 		return "", err
 	}
