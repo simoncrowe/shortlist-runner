@@ -7,9 +7,9 @@ namespace: shortlist
 replicaCount: 1
 
 image:
-  repository: ghcr.io
+  repository: ghcr.io/simoncrowe/shortlist-runner
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "latest"
 
 runner:
   assessor_image: null

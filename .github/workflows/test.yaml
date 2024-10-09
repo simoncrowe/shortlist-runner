@@ -1,5 +1,5 @@
 name: Run automated tests
-run-name: ${{ github.actor }} running tests
+run-name: Running tests
 on: [push]
 jobs:
   unit-tests:
