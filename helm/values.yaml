@@ -1,0 +1,50 @@
+# Default values for shortlist-runner.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+namespace: shortlist
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/simoncrowe/shortlist-runner
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+runner:
+  assessor_image: null
+  notifier_url: http://notifier.shortlist.svc.cluster.local/api/v1/notifcations
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "shortlist-runner.fullname" . }}
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "shortlist-runner.fullname" . }}-job-creator
+  namespace: {{ .Values.namespace }}
+rules:
+- apiGroups: ["batch"]
+  resources: ['jobs']
+  verbs: ['create']
+- apiGroups: [""]
+  resources: ['configmaps']
+  verbs: ['create', 'update']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "shortlist-runner.fullname" . }}-job-creator
+  namespace: {{ .Values.namespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "shortlist-runner.fullname" . }}
+  namespace: {{ .Values.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "shortlist-runner.fullname" . }}-job-creator

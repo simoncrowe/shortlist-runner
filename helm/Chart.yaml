@@ -1,0 +1,7 @@
+apiVersion: v2
+name: shortlist-runner
+description: Runs k8s jobs based on ingested payloads
+type: application
+
+version: 0.1.0
+appVersion: "0.1.0"
