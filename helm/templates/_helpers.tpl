@@ -23,6 +23,7 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
+
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -48,15 +49,4 @@ Selector labels
 {{- define "shortlist-runner.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "shortlist-runner.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "shortlist-runner.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "shortlist-runner.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
 {{- end }}

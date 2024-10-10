@@ -36,12 +36,12 @@ resources: {}
 
 livenessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /health
+    port: 8080
 readinessProbe:
   httpGet:
-    path: /
-    port: http
+    path: /health
+    port: 8080
 
 nodeSelector: {}
 

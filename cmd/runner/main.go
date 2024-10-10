@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	http.HandleFunc("/health", handlers.HandleHealth)
 	http.HandleFunc("/api/v1/profiles", handlers.HandleProfiles)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
