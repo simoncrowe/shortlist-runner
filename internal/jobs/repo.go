@@ -15,21 +15,9 @@ import (
 	schemav1 "github.com/simoncrowe/shortlist-schema/lib/v1"
 )
 
-func createClientset() (*kubernetes.Clientset, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
+type K8sRepository struct{}
 
-	cs, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return cs, nil
-}
-
-func CreateJob(ctx context.Context, profile schemav1.Profile) (string, error) {
+func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (string, error) {
 	cs, err := createClientset()
 	if err != nil {
 		return "", err
@@ -118,4 +106,18 @@ func CreateJob(ctx context.Context, profile schemav1.Profile) (string, error) {
 	}
 
 	return job.ObjectMeta.Name, nil
+}
+
+func createClientset() (*kubernetes.Clientset, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	cs, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return cs, nil
 }

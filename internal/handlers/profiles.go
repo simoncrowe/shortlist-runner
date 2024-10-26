@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/simoncrowe/shortlist-runner/internal/jobs"
 	schemav1 "github.com/simoncrowe/shortlist-schema/lib/v1"
 )
 
@@ -15,7 +14,15 @@ type profileResp struct {
 	Id string `json:"id"`
 }
 
-func HandleProfiles(w http.ResponseWriter, r *http.Request) {
+type JobsRepo interface {
+	Create(ctx context.Context, profile schemav1.Profile) (string, error)
+}
+
+type ProfilesHandler struct {
+	Jobs JobsRepo
+}
+
+func (h ProfilesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	profile, err := schemav1.DecodeProfileJSON(r.Body)
@@ -33,7 +40,7 @@ func HandleProfiles(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	jobId, err := jobs.CreateJob(ctx, profile)
+	jobId, err := h.Jobs.Create(ctx, profile)
 	if err != nil {
 		log.Print(err.Error())
 		http.Error(w, "Error creating Kubernetes Job", http.StatusInternalServerError)
