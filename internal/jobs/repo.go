@@ -73,10 +73,9 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	}
 
 	pod := corev1.PodSpec{
-		Containers:         []corev1.Container{assessor},
-		Volumes:            []corev1.Volume{profileVol},
-		ServiceAccountName: "runner",
-		RestartPolicy:      "Never",
+		Containers:    []corev1.Container{assessor},
+		Volumes:       []corev1.Volume{profileVol},
+		RestartPolicy: "Never",
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
 	jobSpec := batchv1.JobSpec{
