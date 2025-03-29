@@ -80,11 +80,17 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		VolumeMounts: []corev1.VolumeMount{profileVolMnt},
 	}
 
+	gpuToleration := corev1.Toleration{
+		Key:   "nvidia.com/gpu",
+		Value: "present",
+	}
+
 	pod := corev1.PodSpec{
 		Containers:    []corev1.Container{assessor},
 		Volumes:       []corev1.Volume{profileVol},
 		RestartPolicy: "Never",
 		NodeSelector:  map[string]string{os.Getenv("NODE_SELECTOR_KEY"): os.Getenv("NODE_SELECTOR_VALUE")},
+		Tolerations:   []corev1.Toleration{gpuToleration},
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
 	jobSpec := batchv1.JobSpec{
