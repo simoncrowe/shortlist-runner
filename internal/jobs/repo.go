@@ -64,6 +64,14 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 			Name:  "NOTIFIER_URL",
 			Value: os.Getenv("NOTIFIER_URL"),
 		},
+		corev1.EnvVar{
+			Name:  "LLM_SYSTEM_PROMPT",
+			Value: os.Getenv("LLM_SYSTEM_PROMPT"),
+		},
+		corev1.EnvVar{
+			Name:  "LLM_POSITIVE_RESPONSE_REGEX",
+			Value: os.Getenv("LLM_POSITIVE_RESPONSE_REGEX"),
+		},
 	}
 	assessor := corev1.Container{
 		Name:         "assessor",
