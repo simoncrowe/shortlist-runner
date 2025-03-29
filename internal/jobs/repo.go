@@ -84,6 +84,7 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Containers:    []corev1.Container{assessor},
 		Volumes:       []corev1.Volume{profileVol},
 		RestartPolicy: "Never",
+		NodeSelector:  map[string]string{os.Getenv("NODE_SELECTOR_KEY"): os.Getenv("NODE_SELECTOR_VALUE")},
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
 	jobSpec := batchv1.JobSpec{
