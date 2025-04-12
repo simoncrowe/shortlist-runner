@@ -48,33 +48,15 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	if err != nil {
 		return "", err
 	}
-
-	ephemeralVol := corev1.Volume{
-		Name: "ephemeral-volume",
+	cacheVol := corev1.Volume{
+		Name: "model-cache",
 		VolumeSource: corev1.VolumeSource{
-			Ephemeral: &corev1.EphemeralVolumeSource{
-				VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							"type": "ephemeral",
-						},
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{
-							corev1.ReadWriteOnce,
-						},
-						StorageClassName: stringPtr("premium-rwo"),
-						Resources: corev1.VolumeResourceRequirements{
-							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse("150Gi"),
-							},
-						},
-					},
-				},
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: os.Getenv("ASSESSOR_CACHE_PVC_NAME"),
 			},
 		},
 	}
-	ephemeralVolMnt := corev1.VolumeMount{
+	cacheVolMnt := corev1.VolumeMount{
 		Name:      "ephemeral-volume",
 		MountPath: "/tmp",
 	}
@@ -123,13 +105,13 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Name:         "assessor",
 		Image:        os.Getenv("ASSESSOR_IMAGE"),
 		Env:          assessorCfg,
-		VolumeMounts: []corev1.VolumeMount{configVolMnt, ephemeralVolMnt},
+		VolumeMounts: []corev1.VolumeMount{configVolMnt, cacheVolMnt},
 		Resources:    resources,
 	}
 
 	pod := corev1.PodSpec{
 		Containers:    []corev1.Container{assessor},
-		Volumes:       []corev1.Volume{profileVol, ephemeralVol},
+		Volumes:       []corev1.Volume{profileVol, cacheVol},
 		RestartPolicy: "Never",
 		NodeSelector: map[string]string{
 			os.Getenv("ASSESSOR_NODE_SELECTOR_KEY"): os.Getenv("ASSESSOR_NODE_SELECTOR_VALUE"),
