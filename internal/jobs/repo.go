@@ -26,7 +26,7 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	id := uuid.New()
 	jobName := strings.Join([]string{"assessor", id.String()}, "-")
 
-	configData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))
+	configData, err := os.ReadFile(os.Getenv("ASSESSOR_CONFIG_PATH"))
 	if err != nil {
 		return "", err
 	}
