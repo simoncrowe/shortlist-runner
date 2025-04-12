@@ -101,8 +101,11 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Tolerations:   []corev1.Toleration{gpuToleration},
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
+	var retries int32
+	retries = 3
 	jobSpec := batchv1.JobSpec{
-		Template: jobTemplate,
+		Template:     jobTemplate,
+		BackoffLimit: &retries,
 	}
 	jobCfg := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: jobName},
