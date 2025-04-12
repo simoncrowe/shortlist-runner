@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	schemav1 "github.com/simoncrowe/shortlist-schema/lib/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	schemav1 "github.com/simoncrowe/shortlist-schema/lib/v1"
 )
 
 type K8sRepository struct{}
@@ -26,13 +26,18 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	id := uuid.New()
 	jobName := strings.Join([]string{"assessor", id.String()}, "-")
 
+	configData, err := os.ReadFile(os.Getenv("CONFIG_PATH"))
+	if err != nil {
+		return "", err
+	}
 	profileData, err := schemav1.EncodeProfileJSON(profile)
 	if err != nil {
 		return "", err
 	}
 	cmCfg := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: jobName},
-		Data:       map[string]string{"data.json": profileData},
+		Data: map[string]string{"profile.json": profileData,
+			"config.json": string(configData)},
 	}
 	cmOpts := metav1.CreateOptions{}
 	cm, err := cs.CoreV1().ConfigMaps("shortlist").Create(ctx, &cmCfg, cmOpts)
@@ -52,25 +57,32 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	}
 	profileVolMnt := corev1.VolumeMount{
 		Name:      "profile",
-		MountPath: "/etc/shortlist/profile",
+		MountPath: "/etc/shortlist",
+	}
+
+	// TODO: optional GPU support
+	gpuToleration := corev1.Toleration{
+		Key:   "nvidia.com/gpu",
+		Value: "present",
+	}
+	resources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceName("nvidia.com/gpu"): resource.MustParse("1"),
+		},
 	}
 
 	assessorCfg := []corev1.EnvVar{
 		corev1.EnvVar{
 			Name:  "PROFILE_PATH",
-			Value: "/etc/shortlist/profile/data.json",
+			Value: "/etc/shortlist/profile.json",
+		},
+		corev1.EnvVar{
+			Name:  "CONFIG_PATH",
+			Value: "/etc/shortlist/config.json",
 		},
 		corev1.EnvVar{
 			Name:  "NOTIFIER_URL",
 			Value: os.Getenv("NOTIFIER_URL"),
-		},
-		corev1.EnvVar{
-			Name:  "LLM_SYSTEM_PROMPT",
-			Value: os.Getenv("LLM_SYSTEM_PROMPT"),
-		},
-		corev1.EnvVar{
-			Name:  "LLM_POSITIVE_RESPONSE_REGEX",
-			Value: os.Getenv("LLM_POSITIVE_RESPONSE_REGEX"),
 		},
 	}
 	assessor := corev1.Container{
@@ -78,11 +90,7 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Image:        os.Getenv("ASSESSOR_IMAGE"),
 		Env:          assessorCfg,
 		VolumeMounts: []corev1.VolumeMount{profileVolMnt},
-	}
-
-	gpuToleration := corev1.Toleration{
-		Key:   "nvidia.com/gpu",
-		Value: "present",
+		Resources:    resources,
 	}
 
 	pod := corev1.PodSpec{
