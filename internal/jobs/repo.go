@@ -15,6 +15,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+func int32Ptr(i int32) *int32 { return &i }
+
+func stringPtr(s string) *string { return &s }
+
 type K8sRepository struct{}
 
 func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (string, error) {
@@ -45,6 +49,36 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		return "", err
 	}
 
+	ephemeralVol := corev1.Volume{
+		Name: "ephemeral-volume",
+		VolumeSource: corev1.VolumeSource{
+			Ephemeral: &corev1.EphemeralVolumeSource{
+				VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							"type": "ephemeral",
+						},
+					},
+					Spec: corev1.PersistentVolumeClaimSpec{
+						AccessModes: []corev1.PersistentVolumeAccessMode{
+							corev1.ReadWriteOnce,
+						},
+						StorageClassName: stringPtr("premium-rwo"),
+						Resources: corev1.VolumeResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceStorage: resource.MustParse("150Gi"),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	ephemeralVolMnt := corev1.VolumeMount{
+		Name:      "ephemeral-volume",
+		MountPath: "/tmp",
+	}
+
 	profileVol := corev1.Volume{
 		Name: "profile",
 		VolumeSource: corev1.VolumeSource{
@@ -55,7 +89,7 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 			},
 		},
 	}
-	profileVolMnt := corev1.VolumeMount{
+	configVolMnt := corev1.VolumeMount{
 		Name:      "profile",
 		MountPath: "/etc/shortlist",
 	}
@@ -89,13 +123,13 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Name:         "assessor",
 		Image:        os.Getenv("ASSESSOR_IMAGE"),
 		Env:          assessorCfg,
-		VolumeMounts: []corev1.VolumeMount{profileVolMnt},
+		VolumeMounts: []corev1.VolumeMount{configVolMnt, ephemeralVolMnt},
 		Resources:    resources,
 	}
 
 	pod := corev1.PodSpec{
 		Containers:    []corev1.Container{assessor},
-		Volumes:       []corev1.Volume{profileVol},
+		Volumes:       []corev1.Volume{profileVol, ephemeralVol},
 		RestartPolicy: "Never",
 		NodeSelector: map[string]string{
 			os.Getenv("ASSESSOR_NODE_SELECTOR_KEY"): os.Getenv("ASSESSOR_NODE_SELECTOR_VALUE"),
@@ -103,11 +137,9 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Tolerations: []corev1.Toleration{gpuToleration},
 	}
 	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
-	var retries int32
-	retries = 3
 	jobSpec := batchv1.JobSpec{
 		Template:     jobTemplate,
-		BackoffLimit: &retries,
+		BackoffLimit: int32Ptr(3),
 	}
 	jobCfg := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{Name: jobName},
