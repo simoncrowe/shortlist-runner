@@ -17,7 +17,7 @@ import (
 
 func int32Ptr(i int32) *int32 { return &i }
 
-func stringPtr(s string) *string { return &s }
+func strPtr(s string) *string { return &s }
 
 type K8sRepository struct{}
 
@@ -61,7 +61,8 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 					corev1.ResourceStorage: resource.MustParse("200Gi"),
 				},
 			},
-			VolumeName: os.Getenv("ASSESSOR_CACHE_PV_NAME"),
+			StorageClassName: strPtr(""),
+			VolumeName:       os.Getenv("ASSESSOR_CACHE_PV_NAME"),
 		},
 	}
 	cachePvc, err := cs.CoreV1().PersistentVolumeClaims("shortlist").Create(ctx, &pvcCfg, metav1.CreateOptions{})
