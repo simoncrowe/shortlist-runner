@@ -43,22 +43,30 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		Data: map[string]string{"profile.json": profileData,
 			"config.json": string(configData)},
 	}
-	cmOpts := metav1.CreateOptions{}
-	cm, err := cs.CoreV1().ConfigMaps("shortlist").Create(ctx, &cmCfg, cmOpts)
+	cm, err := cs.CoreV1().ConfigMaps("shortlist").Create(ctx, &cmCfg, metav1.CreateOptions{})
 	if err != nil {
 		return "", err
 	}
-	cacheVol := corev1.Volume{
-		Name: "model-cache",
-		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: os.Getenv("ASSESSOR_CACHE_PVC_NAME"),
+
+	pvcCfg := corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: jobName,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
 			},
+			Resources: corev1.VolumeResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: resource.MustParse("200Gi"),
+				},
+			},
+			VolumeName: os.Getenv("ASSESSOR_CACHE_PV_NAME"),
 		},
 	}
-	cacheVolMnt := corev1.VolumeMount{
-		Name:      "ephemeral-volume",
-		MountPath: "/tmp",
+	cachePvc, err := cs.CoreV1().PersistentVolumeClaims("shortlist").Create(ctx, &pvcCfg, metav1.CreateOptions{})
+	if err != nil {
+		return "", err
 	}
 
 	profileVol := corev1.Volume{
@@ -74,6 +82,19 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	configVolMnt := corev1.VolumeMount{
 		Name:      "profile",
 		MountPath: "/etc/shortlist",
+	}
+
+	cacheVol := corev1.Volume{
+		Name: "model-cache",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: jobName,
+			},
+		},
+	}
+	cacheVolMnt := corev1.VolumeMount{
+		Name:      "model-cache",
+		MountPath: "/tmp",
 	}
 
 	// TODO: optional GPU support
@@ -133,15 +154,20 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		return "", err
 	}
 
-	cmOwnerRef := metav1.OwnerReference{
+	// Set up ownership so resources are garbage collected
+	jobOwnerRef := metav1.OwnerReference{
 		APIVersion: "batch/v1",
 		Kind:       "Job",
 		Name:       jobName,
 		UID:        job.UID,
 	}
-	cmUpdateOps := metav1.UpdateOptions{}
-	cm.ObjectMeta.OwnerReferences = []metav1.OwnerReference{cmOwnerRef}
-	_, err = cs.CoreV1().ConfigMaps("shortlist").Update(ctx, cm, cmUpdateOps)
+	cm.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerRef}
+	_, err = cs.CoreV1().ConfigMaps("shortlist").Update(ctx, cm, metav1.UpdateOptions{})
+	if err != nil {
+		return "", err
+	}
+	cachePvc.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerRef}
+	_, err = cs.CoreV1().PersistentVolumeClaims("shortlist").Update(ctx, cachePvc, metav1.UpdateOptions{})
 	if err != nil {
 		return "", err
 	}
