@@ -118,9 +118,10 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	}
 
 	pod := corev1.PodSpec{
-		Containers:    []corev1.Container{assessor},
-		Volumes:       []corev1.Volume{profileVol, cacheVol},
-		RestartPolicy: "Never",
+		ServiceAccountName: os.Getenv("ASSESSOR_SERVICE_ACCOUNT"),
+		Containers:         []corev1.Container{assessor},
+		Volumes:            []corev1.Volume{profileVol, cacheVol},
+		RestartPolicy:      "Never",
 		NodeSelector: map[string]string{
 			os.Getenv("ASSESSOR_NODE_SELECTOR_KEY"): os.Getenv("ASSESSOR_NODE_SELECTOR_VALUE"),
 		},
