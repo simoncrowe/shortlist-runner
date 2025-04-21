@@ -48,28 +48,6 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		return "", err
 	}
 
-	pvcCfg := corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: jobName,
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			Resources: corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("200Gi"),
-				},
-			},
-			StorageClassName: strPtr(""),
-			VolumeName:       os.Getenv("ASSESSOR_CACHE_PV_NAME"),
-		},
-	}
-	cachePvc, err := cs.CoreV1().PersistentVolumeClaims("shortlist").Create(ctx, &pvcCfg, metav1.CreateOptions{})
-	if err != nil {
-		return "", err
-	}
-
 	profileVol := corev1.Volume{
 		Name: "profile",
 		VolumeSource: corev1.VolumeSource{
@@ -85,17 +63,21 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		MountPath: "/etc/shortlist",
 	}
 
+	cacheDir := "/var/cache/shortlist-assessor"
 	cacheVol := corev1.Volume{
-		Name: "model-cache",
+		Name: "cache",
 		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: jobName,
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "gcsfuse.csi.storage.gke.io",
+				VolumeAttributes: map[string]string{
+					"bucketName": os.Getenv("ASSESSOR_CACHE_BUCKET_NAME"),
+				},
 			},
 		},
 	}
 	cacheVolMnt := corev1.VolumeMount{
-		Name:      "model-cache",
-		MountPath: "/tmp",
+		Name:      "cache",
+		MountPath: cacheDir,
 	}
 
 	// TODO: optional GPU support
@@ -110,6 +92,10 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	}
 
 	assessorCfg := []corev1.EnvVar{
+		corev1.EnvVar{
+			Name:  "CACHE_DIR",
+			Value: cacheDir,
+		},
 		corev1.EnvVar{
 			Name:  "PROFILE_PATH",
 			Value: "/etc/shortlist/profile.json",
@@ -164,11 +150,6 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 	}
 	cm.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerRef}
 	_, err = cs.CoreV1().ConfigMaps("shortlist").Update(ctx, cm, metav1.UpdateOptions{})
-	if err != nil {
-		return "", err
-	}
-	cachePvc.ObjectMeta.OwnerReferences = []metav1.OwnerReference{jobOwnerRef}
-	_, err = cs.CoreV1().PersistentVolumeClaims("shortlist").Update(ctx, cachePvc, metav1.UpdateOptions{})
 	if err != nil {
 		return "", err
 	}
