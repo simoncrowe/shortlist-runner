@@ -127,17 +127,19 @@ func (r K8sRepository) Create(ctx context.Context, profile schemav1.Profile) (st
 		},
 		Tolerations: []corev1.Toleration{gpuToleration},
 	}
-	jobTemplate := corev1.PodTemplateSpec{Spec: pod}
+	jobTemplate := corev1.PodTemplateSpec{
+		Spec: pod,
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{"gke-gcsfuse/volumes": "true"},
+		},
+	}
 	jobSpec := batchv1.JobSpec{
 		Template:     jobTemplate,
 		BackoffLimit: int32Ptr(3),
 	}
 	jobCfg := batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        jobName,
-			Annotations: map[string]string{"gke-gcsfuse/volumes": "true"},
-		},
-		Spec: jobSpec,
+		ObjectMeta: metav1.ObjectMeta{Name: jobName},
+		Spec:       jobSpec,
 	}
 	jobOpts := metav1.CreateOptions{}
 	job, err := cs.BatchV1().Jobs("shortlist").Create(ctx, &jobCfg, jobOpts)
